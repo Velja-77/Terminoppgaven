@@ -2,6 +2,7 @@
 import pygame
 import sys
 from pygame.locals import *
+import random  # Import random for fruit relocation
 
 # Import pygame.locals for easier access to key coordinates
 from pygame.locals import (
@@ -56,8 +57,27 @@ class Walls:
     def draw(self, screen):
         screen.blit(self.image, self.rect.topleft)
 
+class Fruit:
+    def __init__(self, image_path, x, y):
+        self.image = pygame.image.load(image_path)
+        self.rect = self.image.get_rect()  # Create a rect for the fruit
+        self.rect.topleft = (x, y)
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect.topleft)
+
+    def relocate(self):
+        # Randomly reposition the fruit within the frame boundaries
+        self.rect.topleft = (
+            random.randint(FRAME_LEFT, FRAME_RIGHT - self.rect.width),
+            random.randint(FRAME_TOP, FRAME_BOTTOM - self.rect.height),
+        )
+
 # Create a player object with the image and starting position
-player = Character("Bilder/vanilla_ice_cream_back_looking.png", 400, 300)
+player = Character("Bilder/vanilla_ice_cream_back_looking.png", 400, 400)
+
+# Create a fruit
+fruit = Fruit("Bilder/banana.png", 200, 200)
 
 # Create the frame (wall) object
 wall = Walls("Bilder/frame.png", 0, 0)
@@ -97,21 +117,26 @@ while running:
     new_rect = player.rect.move(move_x, move_y)
 
     # Manually check against the frame boundaries
-    if new_rect.left < FRAME_LEFT:   # Left boundary
+    if new_rect.left < FRAME_LEFT:   # Left collision
         new_rect.left = FRAME_LEFT
-    if new_rect.right > FRAME_RIGHT:  # Right boundary
+    if new_rect.right > FRAME_RIGHT:  # Right collision
         new_rect.right = FRAME_RIGHT
-    if new_rect.top < FRAME_TOP:     # Top boundary
+    if new_rect.top < FRAME_TOP:     # Top collision
         new_rect.top = FRAME_TOP
-    if new_rect.bottom > FRAME_BOTTOM:  # Bottom boundary
+    if new_rect.bottom > FRAME_BOTTOM:  # Bottom collision
         new_rect.bottom = FRAME_BOTTOM
 
     # Update player's rect
     player.rect = new_rect
 
-    # Draw the frame and player character 
+    # Check for collision between player and fruit
+    if player.rect.colliderect(fruit.rect):
+        fruit.relocate()       # Relocate fruit after being eaten
+
+    # Draw the frame, player character, and fruit
     wall.draw(screen)
     player.draw(screen)
+    fruit.draw(screen)
 
     # Update the display
     pygame.display.update()
@@ -119,6 +144,6 @@ while running:
     # Cap the frame rate at 30 frames per second
     clock.tick(30)
 
-# Quit pygame
+# Quit pygame 
 pygame.quit()
 sys.exit()
