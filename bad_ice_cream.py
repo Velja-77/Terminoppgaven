@@ -30,11 +30,15 @@ clock = pygame.time.Clock()
 
 running = True
 
+score = 0
+
 # Manually define the frame boundaries (adjust these based on the frame image)
 FRAME_LEFT = 30   # Left boundary of the playable area
 FRAME_RIGHT = 770  # Right boundary of the playable area
 FRAME_TOP = 30    # Top boundary of the playable area
 FRAME_BOTTOM = 570  # Bottom boundary of the playable area
+
+font = pygame.font.Font(None, 36)
 
 # Character class
 class Character:
@@ -72,7 +76,7 @@ class Fruit:
             random.randint(FRAME_LEFT, FRAME_RIGHT - self.rect.width),
             random.randint(FRAME_TOP, FRAME_BOTTOM - self.rect.height),
         )
-
+        
 # Create a player object with the image and starting position
 player = Character("Bilder/vanilla_ice_cream_back_looking.png", 400, 400)
 
@@ -132,11 +136,16 @@ while running:
     # Check for collision between player and fruit
     if player.rect.colliderect(fruit.rect):
         fruit.relocate()       # Relocate fruit after being eaten
+        score += 50
+
+    scoreboard = font.render(f"Score: {score}", True, (255, 255, 255)) # LAG GULL FARGE!!!!!
 
     # Draw the frame, player character, and fruit
     wall.draw(screen)
     player.draw(screen)
     fruit.draw(screen)
+
+    screen.blit(scoreboard, (10, 10))
 
     # Update the display
     pygame.display.update()
