@@ -43,15 +43,13 @@ FRAME_BOTTOM = 570  # Bottom collision of the playable area
 # Set up the font and size for displaying the score
 font = pygame.font.Font(None, 30)  # Use default font, size 36
 
-
 def printMenu():
     print("----------Log in or view Leaderboard----------")
     print("| 1. Sign up                                  ")
     print("| 2. Log in                                   ")
     print("| 3. View leaderboard                         ")
     print("| 4. Search player                            ")
-    print("| 5. Play Bad Ice Cream 4                     ")
-    print("| 6. Exit                                     ")
+    print("| 5. Exit                                     ")
     menuChoice = input("Enter a number 1-5 to select from the menu: ")
     ifMenuChoice(menuChoice)
 
@@ -60,13 +58,11 @@ def ifMenuChoice(numberChoice):
         registerPlayer()
     elif(numberChoice == "2"):
         logIn()
-    # elif(numberChoice == "3"):
-        #leaderboard()
+    elif(numberChoice == "3"):
+        leaderboard()
     elif(numberChoice == "4"):
         searchPlayer()
     elif(numberChoice == "5"):
-        runGame()
-    elif(numberChoice == "6"):
         confirm = input("Are you sure you want to exit? Y/N")
         if(confirm == "Y" or confirm == "y"):
             exit()
@@ -86,6 +82,7 @@ def registerPlayer():
 
     input("Press enter to go back to the Menu.")
     printMenu()
+    runGame()
 
 def logIn():
     mydb = mysql.connector.connect(
@@ -109,11 +106,10 @@ def logIn():
 
     if result:
         print(f"Welcome back, {name}!")
-        runGame()
+        runGame(name)
     else:
-        print("Invalid credentials, please try again or exit.")
+        print("Invalid credentials, please try again or press e to exit.")
         logIn()
-
         
 def searchPlayer():
     name = input("Search by name: ")
@@ -162,7 +158,7 @@ def storeInDB(name, password, score=0):
     val = (name, password, score)
     mycursor.execute(sql, val)
     mydb.commit()
-    print(mycursor.rowcount, "Inserted.")
+    print("Signed up successfully.")
     mycursor.close()
     mydb.close()
 
@@ -187,6 +183,38 @@ def updateScore(name, score):
     print(f"Updated score for {name} to {score}.")
     mycursor.close()
     mydb.close()
+
+def leaderboard():
+    # Connect to the database
+    mydb = mysql.connector.connect(
+        host="10.2.3.62",
+        user="velja",
+        password="velja123",
+        database="score",
+        port=3306,
+        charset='utf8mb4',
+        collation='utf8mb4_general_ci'
+    )
+    mycursor = mydb.cursor()
+
+    # SQL query to get the top 5 players by score
+    sql = "SELECT name, score FROM player ORDER BY score DESC LIMIT 5"
+    mycursor.execute(sql)
+    results = mycursor.fetchall()
+
+    # Print the leaderboard
+    print("----------Leaderboard----------")
+    for idx, (name, score) in enumerate(results, start=1):
+        print(f"{idx}. {name}: {score} points")
+    
+    # Close the database connection
+    mycursor.close()
+    mydb.close()
+
+    # Return to the menu after showing the leaderboard
+    input("Press Enter to go back to the menu.")
+    printMenu()
+
 
 # Game Over Function
 def gameOver():
@@ -218,7 +246,7 @@ def gameOver():
                     sys.exit()
 
 def restartGame():
-    global score, player, fruits, monster, monster2
+    global score, player, fruits, monster, monster2, ices
 
     # Reset score and player position
     score = 0
@@ -232,6 +260,14 @@ def restartGame():
         (740, 540), (710, 540), (740, 510),
     ]
     fruits = fruits_location(fruit_positions)
+
+    ice_positions = [
+        (60, 60),
+        (60, 510), 
+        (710, 60), 
+        (710, 510), 
+    ]
+    ices = ice_location(ice_positions)
 
     monster = Monster("Bilder/monster.png", 30, 30)
     monster2 = Monster2("Bilder/monster.png", 60, 60)
@@ -341,6 +377,21 @@ def fruits_location(positions):
         fruits.append(Fruit("Bilder/banana.png", pos[0], pos[1]))
     return fruits
 
+class Ice:
+    def __init__(self, image_path, x, y):
+        self.image = pygame.image.load(image_path)
+        self.rect = self.image.get_rect()  
+        self.rect.topleft = (x, y)
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect.topleft)
+
+def ice_location(positions):
+    ices = []
+    for pos in positions:
+        ices.append(Ice("Bilder/ice_cube.png", pos[0], pos[1]))
+    return ices
+
 player_images = {
     'left': "Bilder/vanilla_ice_cream_left_looking.png",
     'right': "Bilder/vanilla_ice_cream_right_looking.png",
@@ -358,16 +409,25 @@ fruit_positions = [
     (740, 540), (710, 540), (740, 510),
 ]
 
+ice_positions = [
+    (60, 60),
+    (60, 510), 
+    (710, 60), 
+    (710, 510), 
+]
+
 monster = Monster("Bilder/monster.png", 30, 30)
 monster2 = Monster2("Bilder/monster.png", 60, 60)
 
 # Create multiple fruits at these positions
 fruits = fruits_location(fruit_positions)
 
+ices = ice_location(ice_positions)
+
 # Create the frame (wall) object
 wall = Walls("Bilder/frame.png", 0, 0)
 
-def runGame():
+def runGame(player_name):
     # Main game loop
     global score
     running = True
@@ -430,6 +490,7 @@ def runGame():
             if player.rect.colliderect(fruit.rect):
                 fruits.remove(fruit)  # Remove the fruit when collected
                 score += 50            # Increase the score
+                updateScore(player_name, score)
     
         monster.move()
         monster2.move()
@@ -445,6 +506,8 @@ def runGame():
         player.draw(screen)
         monster.draw(screen)
         monster2.draw(screen)
+        for ice in ices:
+            ice.draw(screen)
         for fruit in fruits:
             fruit.draw(screen)
 
