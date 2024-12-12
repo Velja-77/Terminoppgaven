@@ -43,17 +43,19 @@ FRAME_BOTTOM = 570  # Bottom collision of the playable area
 # Set up the font and size for displaying the score
 font = pygame.font.Font(None, 30)  # Use default font, size 36
 
-def printMeny():
+
+def printMenu():
     print("----------Log in or view Leaderboard----------")
     print("| 1. Sign up                                  ")
     print("| 2. Log in                                   ")
     print("| 3. View leaderboard                         ")
     print("| 4. Search player                            ")
-    print("| 5. Exit                                     ")
-    menyChoice = input("Enter a number 1-5 to select from the menu: ")
-    ifmenyChoice(menyChoice)
+    print("| 5. Play Bad Ice Cream 4                     ")
+    print("| 6. Exit                                     ")
+    menuChoice = input("Enter a number 1-5 to select from the menu: ")
+    ifMenuChoice(menuChoice)
 
-def ifmenyChoice(numberChoice):
+def ifMenuChoice(numberChoice):
     if(numberChoice == "1"):
         registerPlayer()
     elif(numberChoice == "2"):
@@ -63,14 +65,16 @@ def ifmenyChoice(numberChoice):
     elif(numberChoice == "4"):
         searchPlayer()
     elif(numberChoice == "5"):
+        runGame()
+    elif(numberChoice == "6"):
         confirm = input("Are you sure you want to exit? Y/N")
         if(confirm == "Y" or confirm == "y"):
             exit()
         else:
-            printMeny()
+            printMenu()
     else:
         again = input("Invalid choice. Enter a number 1-5. ")
-        ifmenyChoice(again)
+        ifMenuChoice(again)
 
 def registerPlayer():
     name = input("Write your name:")
@@ -80,9 +84,8 @@ def registerPlayer():
 
     storeInDB(name, password)
 
-    input("Click on a button to go back to the Menu.")
-    printMeny()
-    runGame()
+    input("Press enter to go back to the Menu.")
+    printMenu()
 
 def logIn():
     mydb = mysql.connector.connect(
@@ -106,10 +109,12 @@ def logIn():
 
     if result:
         print(f"Welcome back, {name}!")
+        runGame()
     else:
-        print("Invalid credentials, please try again.")
+        print("Invalid credentials, please try again or exit.")
         logIn()
 
+        
 def searchPlayer():
     name = input("Search by name: ")
     findPlayer(name)
@@ -182,6 +187,57 @@ def updateScore(name, score):
     print(f"Updated score for {name} to {score}.")
     mycursor.close()
     mydb.close()
+
+# Game Over Function
+def gameOver():
+    gameOverFont = pygame.font.Font(None, 74)
+    smallFont = pygame.font.Font(None, 40)
+
+    gameOverText = gameOverFont.render("Game Over", True, (33, 106, 99))
+    restartText = smallFont.render("Press R to restart or Q to quit", True, (33, 106, 99))
+
+    while True: 
+        screen.fill((255, 255, 255))
+
+        screen.blit(gameOverText, (SCREEN_WIDTH // 2 - gameOverText.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+        screen.blit(restartText, (SCREEN_WIDTH // 2 - restartText.get_width() // 2, SCREEN_HEIGHT // 2 + 50))
+
+        pygame.display.update()
+
+        # Event handling for restart or quit
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == KEYDOWN:
+                if event.key == pygame.K_r:
+                    restartGame()  # Restart the game
+                    return          # Exit the game_over loop to avoid keeping the screen
+                elif event.key == pygame.K_q:
+                    pygame.quit()
+                    sys.exit()
+
+def restartGame():
+    global score, player, fruits, monster, monster2
+
+    # Reset score and player position
+    score = 0
+    player = Character(player_images, 400, 400)
+
+    # Reset fruits and monsters
+    fruit_positions = [
+        (30, 30), (30, 60), (60, 30),
+        (30, 540), (30, 510), (60, 540),
+        (740, 30), (710, 30), (740, 60),
+        (740, 540), (710, 540), (740, 510),
+    ]
+    fruits = fruits_location(fruit_positions)
+
+    monster = Monster("Bilder/monster.png", 30, 30)
+    monster2 = Monster2("Bilder/monster.png", 60, 60)
+
+    # Restart the game loop
+    runGame()
 
 # Character class
 class Character:
@@ -321,16 +377,18 @@ def runGame():
         # Event handling
         for event in pygame.event.get():
             if event.type == QUIT:
-                running = False
+                pygame.quit()
+                sys.exit()
             elif event.type == KEYDOWN:
-                if event.key == K_ESCAPE:
-                    running = False
+                if event.key == pygame.K_r:
+                    restartGame()
+                elif event.key == pygame.K_q:
+                    pygame.quit()
+                    sys.exit()
 
         # Handle continuous keypresses for movement
         keys = pygame.key.get_pressed()
-
-        # Set movement to zero initially
-        move_x, move_y = 0, 0
+        move_x, move_y = 0, 0 # Set movement to zero initially
         direction = None # Variable to store the direction
 
         # Restrict movement to one axis at a time
@@ -372,13 +430,12 @@ def runGame():
             if player.rect.colliderect(fruit.rect):
                 fruits.remove(fruit)  # Remove the fruit when collected
                 score += 50            # Increase the score
-                updateScore(score)
     
         monster.move()
         monster2.move()
 
-        if player.rect.colliderect(monster.rect):
-            running = False
+        if player.rect.colliderect(monster.rect) or player.rect.colliderect(monster2.rect):
+            gameOver()
 
         # Render the score
         score_text = font.render(f"Score: {score}", True, (255, 215, 0)) 
@@ -406,10 +463,9 @@ def runGame():
 
     # Quit pygame 
     pygame.quit()
-    sys.exit()
 
 # Run the menu first
-printMeny()
+printMenu()
 
 # Once the user is logged in, start the game
 runGame()
