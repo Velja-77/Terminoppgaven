@@ -20,8 +20,8 @@ from pygame.locals import (
 pygame.init()
 
 # Define constants for the screen width and height
-SCREEN_WIDTH = 960
-SCREEN_HEIGHT = 750
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
 
 # Create the screen object
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -46,7 +46,7 @@ font = pygame.font.Font(None, 30)  # Use default font, size 36
 def printMenu():
     print("----------Log in or view Leaderboard----------")
     print("| 1. Sign up                                  ")
-    print("| 2. Log in                                   ")
+    print("| 2. Log in and play                          ")
     print("| 3. View leaderboard                         ")
     print("| 4. Search player                            ")
     print("| 5. Exit                                     ")
@@ -73,14 +73,19 @@ def ifMenuChoice(numberChoice):
         ifMenuChoice(again)
 
 def registerPlayer():
-    name = input("Write your name:")
-    password = input("Write your password:")
-
-    # If name already exist ...
-
+    choice =("Press M to return to the menu or R to register.")
+    if choice == 'm' or choice == 'M':
+        printMenu()
+    elif choice == 'r' or choice == 'R':
+        name = input("Write your name:")
+        password = input("Press M to return to the menu. Write your password:")
+    else:
+        print("Invalid choice.")
+        printMenu()
+        
     storeInDB(name, password)
 
-    input("Press enter to go back to the Menu.")
+    input("Press enter to return to the Menu.")
     printMenu()
     runGame()
 
@@ -108,8 +113,15 @@ def logIn():
         print(f"Welcome back, {name}!")
         runGame(name)
     else:
-        print("Invalid credentials, please try again or press e to exit.")
-        logIn()
+        print("Invalid credentials.")
+        choice = input("Press R to retry login or M to return to the menu.").lower()
+        if choice == 'r' or choice == 'R':
+            logIn() # Retry log in
+        elif choice == 'm' or choice == 'M':
+            printMenu() # Return to the menu
+        else:
+            print("Invalid choice.")
+            printMenu()
         
 def searchPlayer():
     name = input("Search by name: ")
@@ -127,17 +139,21 @@ def findPlayer(name):
     )
     mycursor = mydb.cursor()
 
-    sql = "SELECT * FROM player WHERE name = %s"
+    sql = "SELECT name, score FROM player WHERE name = %s"
     val = (name, )
 
     mycursor.execute(sql, val)
     myresult = mycursor.fetchone()  # Fetch one result
 
     if myresult:
-        print(f"Player found: {myresult}")
+        player_name, player_score = myresult
+        print(f"Player found, Name: {player_name}, Score: {player_score}")
     else:
         print(f"No player found with the name: {name}")
-
+        
+    input("Press enter to return to the menu.")
+    printMenu()
+    
     # Close the cursor and the connection
     mycursor.close()
     mydb.close()
@@ -212,24 +228,24 @@ def leaderboard():
     mydb.close()
 
     # Return to the menu after showing the leaderboard
-    input("Press Enter to go back to the menu.")
+    input("Press Enter to return to the menu.")
     printMenu()
 
-
-# Game Over Function
-def gameOver():
+def gameWon():
     gameOverFont = pygame.font.Font(None, 74)
     smallFont = pygame.font.Font(None, 40)
 
-    gameOverText = gameOverFont.render("Game Over", True, (33, 106, 99))
+    gameOverText = gameOverFont.render("You won!", True, (33, 106, 99))  
+    scoreText = smallFont.render(f"Your score: {score}", True, (33, 106, 99))   
     restartText = smallFont.render("Press R to restart or Q to quit", True, (33, 106, 99))
 
     while True: 
         screen.fill((255, 255, 255))
 
-        screen.blit(gameOverText, (SCREEN_WIDTH // 2 - gameOverText.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+        screen.blit(gameOverText, (SCREEN_WIDTH // 2 - gameOverText.get_width() // 2, SCREEN_HEIGHT // 2 - 75))
+        screen.blit(scoreText, (SCREEN_WIDTH // 2 - scoreText.get_width() // 2, SCREEN_HEIGHT // 2 - 0))
         screen.blit(restartText, (SCREEN_WIDTH // 2 - restartText.get_width() // 2, SCREEN_HEIGHT // 2 + 50))
-
+       
         pygame.display.update()
 
         # Event handling for restart or quit
@@ -245,7 +261,41 @@ def gameOver():
                     pygame.quit()
                     sys.exit()
 
-def restartGame():
+# Game Over Function
+def gameOver(player_name):
+    global score
+    updateScore(player_name, score)
+
+    gameOverFont = pygame.font.Font(None, 74)
+    smallFont = pygame.font.Font(None, 40)
+
+    gameOverText = gameOverFont.render("Game Over.", True, (33, 106, 99))  
+    scoreText = smallFont.render(f"Your score: {score}", True, (33, 106, 99))   
+    restartText = smallFont.render("Press R to restart or Q to quit", True, (33, 106, 99))
+
+    while True: 
+        screen.fill((255, 255, 255))
+
+        screen.blit(gameOverText, (SCREEN_WIDTH // 2 - gameOverText.get_width() // 2, SCREEN_HEIGHT // 2 - 75))
+        screen.blit(scoreText, (SCREEN_WIDTH // 2 - scoreText.get_width() // 2, SCREEN_HEIGHT // 2 - 0))
+        screen.blit(restartText, (SCREEN_WIDTH // 2 - restartText.get_width() // 2, SCREEN_HEIGHT // 2 + 50))
+       
+        pygame.display.update()
+
+        # Event handling for restart or quit
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == KEYDOWN:
+                if event.key == pygame.K_r:
+                    restartGame(player_name)  # Restart the game
+                    return          # Exit the game_over loop to avoid keeping the screen
+                elif event.key == pygame.K_q:
+                    pygame.quit()
+                    sys.exit()
+
+def restartGame(player_name):
     global score, player, fruits, monster, monster2, ices
 
     # Reset score and player position
@@ -273,7 +323,7 @@ def restartGame():
     monster2 = Monster2("Bilder/monster.png", 60, 60)
 
     # Restart the game loop
-    runGame()
+    runGame(player_name)
 
 # Character class
 class Character:
@@ -490,13 +540,12 @@ def runGame(player_name):
             if player.rect.colliderect(fruit.rect):
                 fruits.remove(fruit)  # Remove the fruit when collected
                 score += 50            # Increase the score
-                updateScore(player_name, score)
     
         monster.move()
         monster2.move()
 
         if player.rect.colliderect(monster.rect) or player.rect.colliderect(monster2.rect):
-            gameOver()
+            gameOver(player_name)
 
         # Render the score
         score_text = font.render(f"Score: {score}", True, (255, 215, 0)) 
@@ -516,7 +565,7 @@ def runGame(player_name):
 
         # Check if all fruits are eaten
         if len(fruits) == 0:
-            running = False  # Exit the game when all fruits are collected
+            gameWon()
 
         # Update the display
         pygame.display.update()
